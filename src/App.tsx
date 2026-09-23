@@ -1,67 +1,58 @@
-import { CATEGORIES } from './types'
-import { useDashboardData } from './hooks/useDashboardData'
-import { Header } from './components/Header'
-import { CategoryCard } from './components/CategoryCard'
+import { useState } from 'react'
+import { AgendaView } from './components/AgendaView'
+import { TrainingApp } from './training/components/TrainingApp'
+
+type View = 'agenda' | 'training'
+
+const VIEW_KEY = 'daily-agend:view'
+
+function loadView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'training' ? 'training' : 'agenda'
+  } catch {
+    return 'agenda'
+  }
+}
 
 function App() {
-  const {
-    activeDate,
-    day,
-    addGoal,
-    toggleGoal,
-    removeGoal,
-    setPriority,
-    reorderGoals,
-    copyFromYesterday,
-    hasYesterdayData,
-    goToDate,
-    goToToday,
-    shiftDate,
-    getDayStats,
-    categoryStats,
-    streak,
-    last7Days,
-  } = useDashboardData()
+  const [view, setView] = useState<View>(loadView)
 
-  const overallStats = getDayStats(activeDate)
+  const switchView = (next: View) => {
+    setView(next)
+    try {
+      localStorage.setItem(VIEW_KEY, next)
+    } catch {
+      // storage unavailable
+    }
+  }
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
       <main className="mx-auto max-w-5xl px-4 py-8">
-        <Header
-          activeDate={activeDate}
-          overallStats={overallStats}
-          streak={streak}
-          last7Days={last7Days}
-          onShift={shiftDate}
-          onGoToToday={goToToday}
-          onSelectDate={goToDate}
-          onCopyYesterday={copyFromYesterday}
-          hasYesterdayData={hasYesterdayData}
-        />
+        <nav className="mb-6 flex gap-1 border-b border-neutral-200 dark:border-neutral-800" aria-label="App sections">
+          {(
+            [
+              { id: 'agenda', label: '📋 Agenda' },
+              { id: 'training', label: '🤸 Training' },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => switchView(t.id)}
+              aria-current={view === t.id ? 'page' : undefined}
+              className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
+                view === t.id
+                  ? 'border-violet-500 text-violet-600 dark:text-violet-300'
+                  : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-100'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {CATEGORIES.map((meta) => {
-            const goals = day.categories[meta.id]
-            return (
-              <CategoryCard
-                key={meta.id}
-                meta={meta}
-                goals={goals}
-                stats={categoryStats(goals)}
-                onAdd={(text, priority) => addGoal(meta.id, text, priority)}
-                onToggle={(goalId) => toggleGoal(meta.id, goalId)}
-                onRemove={(goalId) => removeGoal(meta.id, goalId)}
-                onSetPriority={(goalId, priority) => setPriority(meta.id, goalId, priority)}
-                onReorder={(fromId, toId) => reorderGoals(meta.id, fromId, toId)}
-              />
-            )
-          })}
-        </div>
-
-        <footer className="mt-8 text-center text-xs text-neutral-400 dark:text-neutral-600">
-          Saved automatically in this browser.
-        </footer>
+        {view === 'agenda' ? <AgendaView /> : <TrainingApp />}
       </main>
     </div>
   )
